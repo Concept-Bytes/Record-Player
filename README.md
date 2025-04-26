@@ -25,11 +25,12 @@ For detailed instructions on assembling the physical record player enclosure, wi
 - pip
 - Spotify Premium account
 - A registered Spotify application (Client ID and Client Secret)
+- Bluetooth module
 
 Python dependencies:
 
 ```bash
-pip install pygame requests spotipy
+pip install pygame requests spotipy bluetooth
 ```
 
 ## Configuration
@@ -69,6 +70,14 @@ export SPOTIFY_SCOPE=user-read-currently-playing
 
 On first run, if any required variables are missing, the app will prompt you to enter them,
 and save them to `.env` for future use.
+
+## Bluetooth Configuration
+
+To use Bluetooth headphones with this application, follow these steps:
+
+1. Ensure your Bluetooth headphones are in pairing mode.
+2. Run the application. It will automatically search for and connect to your Bluetooth headphones.
+3. If the application cannot find your Bluetooth headphones, ensure they are in pairing mode and try again.
 
 ## Usage
 
