@@ -10,13 +10,40 @@ from io import BytesIO
 from spot import get_current_playing_info, start_music, stop_music, skip_to_next, skip_to_previous
 import argparse
 from pathlib import Path
+import bluetooth
 
 BASE_DIR = Path(__file__).resolve().parent
 
+def connect_bluetooth_headphones():
+    target_name = "Your Bluetooth Headphones"
+    target_address = None
+
+    nearby_devices = bluetooth.discover_devices()
+
+    for bdaddr in nearby_devices:
+        if target_name == bluetooth.lookup_name(bdaddr):
+            target_address = bdaddr
+            break
+
+    if target_address is not None:
+        print("Found target bluetooth device with address ", target_address)
+        # Connect to the Bluetooth device
+        # Note: The actual connection code will depend on the specific Bluetooth library and device
+    else:
+        print("Could not find target bluetooth device nearby")
+
+def switch_audio_output(use_bluetooth):
+    pygame.mixer.quit()
+    if use_bluetooth:
+        pygame.mixer.init(devicename="Your Bluetooth Headphones")
+    else:
+        pygame.mixer.init()
+
 def run(windowed=False):
+    connect_bluetooth_headphones()
     # Initialize Pygame and audio mixer
     pygame.init()
-    pygame.mixer.init()
+    pygame.mixer.init(devicename="Your Bluetooth Headphones")
     flags = 0 if windowed else pygame.FULLSCREEN
     screen = pygame.display.set_mode((1080, 1080), flags)
     pygame.display.set_caption("Spotify Record Spinner")
@@ -38,6 +65,7 @@ def run(windowed=False):
     skip_btn  = pygame.image.load(str(icons_dir / 'skip.png'))
     prev_btn  = pygame.image.load(str(icons_dir / 'previous.png'))
     banner    = pygame.image.load(str(icons_dir / 'banner.png'))
+    bluetooth_btn = pygame.image.load(str(icons_dir / 'bluetooth.png'))
 
     font = pygame.font.Font(None, 40)
 
@@ -59,6 +87,7 @@ def run(windowed=False):
     last_mouse_pos = None
     details = None
     album_img = None
+    use_bluetooth = True
 
     # Helper to fetch and update track details and album image
     def update_details():
@@ -108,6 +137,11 @@ def run(windowed=False):
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return
 
+            # Switch audio output on 'B' key press
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_b:
+                use_bluetooth = not use_bluetooth
+                switch_audio_output(use_bluetooth)
+
             # Mouse down: record swipe start & handle clicks
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 swipe_start_pos = event.pos
@@ -122,8 +156,9 @@ def run(windowed=False):
                 prev_w, prev_h   = prev_btn.get_width(), prev_btn.get_height()
                 pause_w, pause_h = pause_btn.get_width(), pause_btn.get_height()
                 skip_w, skip_h   = skip_btn.get_width(), skip_btn.get_height()
+                bluetooth_w, bluetooth_h = bluetooth_btn.get_width(), bluetooth_btn.get_height()
 
-                group_width   = album_w + prev_w + pause_w + skip_w + (3 * gap)
+                group_width   = album_w + prev_w + pause_w + skip_w + bluetooth_w + (4 * gap)
                 group_start_x = (1080 - group_width) // 2
                 group_center_y = banner_y + (banner.get_height() // 2) + 30
 
@@ -135,6 +170,8 @@ def run(windowed=False):
                 pause_y = group_center_y - (pause_h // 2)
                 skip_x  = pause_x + pause_w + gap
                 skip_y  = group_center_y - (skip_h // 2)
+                bluetooth_x = skip_x + skip_w + gap
+                bluetooth_y = group_center_y - (bluetooth_h // 2)
 
                 # Previous track
                 if prev_x <= mx <= prev_x + prev_w and prev_y <= my <= prev_y + prev_h:
@@ -175,6 +212,11 @@ def run(windowed=False):
                         record_image = pygame.image.load(str(new_path))
                         record_image = pygame.transform.scale(record_image, (int(1080 * 1.25), int(1080 * 1.25)))
                         threading.Thread(target=update_details, daemon=True).start()
+
+                # Switch audio output
+                elif bluetooth_x <= mx <= bluetooth_x + bluetooth_w and bluetooth_y <= my <= bluetooth_y + bluetooth_h:
+                    use_bluetooth = not use_bluetooth
+                    switch_audio_output(use_bluetooth)
 
                 # Otherwise, start dragging if click on record
                 else:
@@ -225,8 +267,9 @@ def run(windowed=False):
         prev_w, prev_h   = prev_btn.get_width(), prev_btn.get_height()
         pause_w, pause_h = pause_btn.get_width(), pause_btn.get_height()
         skip_w, skip_h   = skip_btn.get_width(), skip_btn.get_height()
+        bluetooth_w, bluetooth_h = bluetooth_btn.get_width(), bluetooth_btn.get_height()
 
-        group_width   = album_w + prev_w + pause_w + skip_w + (3 * gap)
+        group_width   = album_w + prev_w + pause_w + skip_w + bluetooth_w + (4 * gap)
         group_start_x = (1080 - group_width) // 2
         group_center_y = banner_y + (banner.get_height() // 2) + 30
 
@@ -238,12 +281,15 @@ def run(windowed=False):
         pause_y = group_center_y - (pause_h // 2)
         skip_x  = pause_x + pause_w + gap
         skip_y  = group_center_y - (skip_h // 2)
+        bluetooth_x = skip_x + skip_w + gap
+        bluetooth_y = group_center_y - (bluetooth_h // 2)
 
         if album_img:
             screen.blit(album_img, (album_x, album_y))
         screen.blit(prev_btn,  (prev_x,  prev_y))
         screen.blit(pause_btn if is_playing else play_btn, (pause_x, pause_y))
         screen.blit(skip_btn,  (skip_x,  skip_y))
+        screen.blit(bluetooth_btn, (bluetooth_x, bluetooth_y))
 
         # Song text
         if details:
